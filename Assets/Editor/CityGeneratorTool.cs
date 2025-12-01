@@ -24,18 +24,23 @@ namespace TimeLoopCity.Editor
 
             Debug.Log("<b>[City Generator]</b> Starting procedural generation...");
 
-            // Find or create generator
-            var generator = Object.FindFirstObjectByType<TimeLoopCity.Environment.ProceduralCityGenerator>();
+            // Find or create generator using reflection to avoid assembly reference issues
+            var generatorType = System.Type.GetType("TimeLoopCity.Environment.ProceduralCityGenerator");
+            var generator = Object.FindFirstObjectByType(generatorType) as MonoBehaviour;
             
             if (generator == null)
             {
                 GameObject genObj = new GameObject("CityGenerator");
-                generator = genObj.AddComponent<TimeLoopCity.Environment.ProceduralCityGenerator>();
+                generator = genObj.AddComponent(generatorType) as MonoBehaviour;
                 Debug.Log("[City Generator] Created new CityGenerator component");
             }
 
-            // Generate the city
-            generator.GenerateCity(seed: 42); // Consistent seed for reproducibility
+            // Generate the city using reflection
+            var generateMethod = generatorType.GetMethod("GenerateCity");
+            if (generateMethod != null)
+            {
+                generateMethod.Invoke(generator, new object[] { 42 });
+            }
 
             // Mark scene dirty
             UnityEditor.SceneManagement.EditorSceneManager.MarkAllScenesDirty();
