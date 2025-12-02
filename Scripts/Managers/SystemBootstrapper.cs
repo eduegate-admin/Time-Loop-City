@@ -19,9 +19,12 @@ namespace TimeLoopCity.Managers
 
         private void Awake()
         {
+            // Avoid running in edit mode (safety)
+            if (!Application.isPlaying) return;
+
             // Ensure EventSystem exists (but only create if truly missing)
             EventSystem[] eventSystems = FindObjectsOfType<EventSystem>();
-            
+
             if (eventSystems.Length == 0)
             {
                 GameObject eventSystem = new GameObject("EventSystem");
@@ -29,17 +32,33 @@ namespace TimeLoopCity.Managers
                 eventSystem.AddComponent<StandaloneInputModule>();
                 DontDestroyOnLoad(eventSystem);
                 Debug.Log("[SystemBootstrapper] Created missing EventSystem.");
+                return;
             }
-            else if (eventSystems.Length > 1)
+
+            if (eventSystems.Length > 1)
             {
-                Debug.LogWarning($"[SystemBootstrapper] Found {eventSystems.Length} EventSystems. " +
-                    "There should only be one. Removing duplicates...");
-                
-                // Keep the first one, destroy the rest
+                // Keep the first active EventSystem, disable others to prevent continuous spam
+                EventSystem primary = eventSystems[0];
+                int removed = 0;
+
                 for (int i = 1; i < eventSystems.Length; i++)
                 {
-                    Destroy(eventSystems[i].gameObject);
+                    var es = eventSystems[i];
+                    if (es == null) continue;
+
+                    // If it's on a DontDestroyOnLoad object or already active, prefer to keep the primary intact
+                    if (es.gameObject.scene.isLoaded == false)
+                    {
+                        es.gameObject.SetActive(false);
+                        removed++;
+                        continue;
+                    }
+
+                    es.gameObject.SetActive(false);
+                    removed++;
                 }
+
+                Debug.LogWarning($"[SystemBootstrapper] Found {eventSystems.Length} EventSystems. Disabled {removed} duplicate(s).");
             }
         }
     }
